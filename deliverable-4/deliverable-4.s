@@ -1,4 +1,5 @@
 ; Setup constants to make code less redundant and more legible
+OAMPAGE   = $0200           ; Page of memory that will be copied to OAM
 PPUCTRL   = $2000           ; Writes PPU control flags
 PPUMASK   = $2001           ; Writes PPU mask flags
 PPUSTATUS = $2002           ; Reads PPU action flags and resets PPUADDR
@@ -38,7 +39,6 @@ player_y: .res 1            ; Player y-position
 player_d: .res 1            ; Player sprite offset for direction
 player_s: .res 1            ; Player sprite offset for animation state
 anim_cnt: .res 1            ; Animation count clock that player_s uses
-oam_slot: .res 1            ; Offset to change where in OAM to write
 p1_holds: .res 1            ; Bytes that deal with player 1's held inputs
 p1_press: .res 1            ; Bytes that deal with player 1's press inputs
 ppu_tile: .res 1            ; PPU tile to write onto the nametable
@@ -53,8 +53,8 @@ stages_n: .res 1            ; Which stage to load
 
 
 .segment "RODATA"
-palette_1:
 ; First set of palettes
+palette_1:
 .byte $0B, $30, $10, $00
 .byte $0B, $10, $15, $07
 .byte $0B, $35, $22, $04
@@ -63,8 +63,8 @@ palette_1:
 .byte $0B, $27, $14, $0F
 .byte $0B, $27, $14, $0F
 .byte $0B, $27, $14, $0F
-palette_2:
 ; Second set of palettes
+palette_2:
 .byte $0C, $30, $10, $00
 .byte $0C, $32, $27, $06
 .byte $0C, $37, $29, $18
@@ -73,11 +73,11 @@ palette_2:
 .byte $0C, $27, $14, $0F
 .byte $0C, $27, $14, $0F
 .byte $0C, $27, $14, $0F
-sprites:
 ; The player's sprite data
 ; Each group is a direction and each subgroup of 4 is an animation frame
 ; Direction groups are ordered {Down, Up, Left, Right}
 ; Animation groups are ordered {Still, Right Leg Lean, Left Leg Lean}
+sprites:
 .byte $00, $02, %00100000, $00
 .byte $00, $03, %00100000, $08
 .byte $08, $12, %00100000, $00
@@ -129,72 +129,41 @@ sprites:
 .byte $00, $0A, %01100000, $08
 .byte $08, $0F, %00100000, $00
 .byte $08, $1A, %01100000, $08
+; Map tiles, split into stages 1 and 2 respectively
 stagetiles:
-; Map tiles
-; Stage 1, Screen 1
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %01000011, %10111000, %00000000, %00111111
-.byte %01101011, %10110000, %10101010, %10111011
-.byte %01001011, %11111000, %00000000, %10111011
-.byte %01001000, %10101010, %00101000, %10111111
-.byte %01111111, %00001011, %11111000, %10001000
-.byte %01101011, %10001011, %10110011, %10101010
-.byte %01111111, %10101011, %11111011, %10110000
-.byte %01001000, %10001010, %00101011, %11111000
-.byte %01001000, %00001011, %11111010, %10101000
-.byte %00001000, %10000011, %10110000, %00000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %00000000, %00000000, %00000000, %00000000
-; Stage 1, Screen 2
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %00000010, %11111100, %10000000, %10111001
-.byte %10101010, %11101110, %10001000, %00111101
-.byte %00000010, %11111100, %00001010, %10100001
-.byte %10100000, %00101000, %10111111, %00100001
-.byte %00100010, %00100000, %10111011, %10100001
-.byte %00100010, %00101010, %10111111, %10111101
-.byte %00100000, %00001000, %10101000, %10101101
-.byte %10100010, %10001000, %00000000, %11111101
-.byte %10111111, %10001000, %10101010, %10100001
-.byte %00111011, %00001000, %00001111, %10000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %00000000, %00000000, %00000000, %00000000
-; Stage 2, Screen 1
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %01001000, %00000010, %00100000, %10001111
-.byte %01111010, %00101010, %00101000, %10101010
-.byte %01111000, %00111111, %00111100, %10000000
-.byte %01000000, %10100010, %00101000, %00001000
-.byte %01001010, %10000010, %00001011, %10001010
-.byte %01101000, %10001010, %10000011, %10101000
-.byte %01000011, %10101000, %00001011, %10000000
-.byte %01101011, %10001010, %00101000, %00001000
-.byte %01001011, %00001000, %00001010, %10101010
-.byte %00000000, %10000000, %10001111, %11111111
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %00000000, %00000000, %00000000, %00000000
-; Stage 2, Screen 2
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %00000000, %00000000, %00000000, %00000000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %11001000, %00001000, %00111111, %00000001
-.byte %10000000, %10101010, %00101010, %00100001
-.byte %10100010, %10001000, %00000010, %00000001
-.byte %00100000, %00001010, %10001010, %10101101
-.byte %00100010, %11101000, %00001000, %00101101
-.byte %11110010, %11100000, %10001000, %10101101
-.byte %10100010, %11100010, %10001000, %00101101
-.byte %00101010, %00000010, %00001010, %00101101
-.byte %00100010, %10100010, %10000000, %00101101
-.byte %00100011, %11110010, %00001000, %10100000
-.byte %01010101, %01010101, %01010101, %01010101
-.byte %00000000, %00000000, %00000000, %00000000
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101
+.byte %01000011, %10111000, %00000000, %00111111, %00000010, %11111100, %10000000, %10111001
+.byte %01101011, %10110000, %10101010, %10111011, %10101010, %11101110, %10001000, %00111101
+.byte %01001011, %11111000, %00000000, %10111011, %00000010, %11111100, %00001010, %10100001
+.byte %01001000, %10101010, %00101000, %10111111, %10100000, %00101000, %10111111, %00100001
+.byte %01111111, %00001011, %11111000, %10001000, %00100010, %00100000, %10111011, %10100001
+.byte %01101011, %10001011, %10110011, %10101010, %00100010, %00101010, %10111111, %10111101
+.byte %01111111, %10101011, %11111011, %10110000, %00100000, %00001000, %10101000, %10101101
+.byte %01001000, %10001010, %00101011, %11111000, %10100010, %10001000, %00000000, %11111101
+.byte %01001000, %00001011, %11111010, %10101000, %10111111, %10001000, %10101010, %10100001
+.byte %00001000, %10000011, %10110000, %00000000, %00111011, %00001000, %00001111, %10000000
+.byte %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101
+.byte %01001000, %00000010, %00100000, %10001111, %11001000, %00001000, %00111111, %00000001
+.byte %01111010, %00101010, %00101000, %10101010, %10000000, %10101010, %00101010, %00100001
+.byte %01111000, %00111111, %00111100, %10000000, %10100010, %10001000, %00000010, %00000001
+.byte %01000000, %10100010, %00101000, %00001000, %00100000, %00001010, %10001010, %10101101
+.byte %01001010, %10000010, %00001011, %10001010, %00100010, %11101000, %00001000, %00101101
+.byte %01101000, %10001010, %10000011, %10101000, %11110010, %11100000, %10001000, %10101101
+.byte %01000011, %10101000, %00001011, %10000000, %10100010, %11100010, %10001000, %00101101
+.byte %01101011, %10001010, %00101000, %00001000, %00101010, %00000010, %00001010, %00101101
+.byte %01001011, %00001000, %00001010, %10101010, %00100010, %10100010, %10000000, %00101101
+.byte %00000000, %10000000, %10001111, %11111111, %00100011, %11110010, %00001000, %10100000
+.byte %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101, %01010101
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+.byte %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
 
 
 
@@ -218,7 +187,7 @@ stagetiles:
   LDX #$00
 oam_clean:
   LDA #$FF
-  STA $0200,X
+  STA OAMPAGE, X
   INX
   CPX #$00
   BNE oam_clean
@@ -235,8 +204,6 @@ oam_clean:
   BEQ stage_skip
 
   ; If any of the said buttons are pressed, disable PPU flags
-  LDA #$78
-  STA stages_n
   LDX #$00
   STX PPUCTRL
   LDX #%00000110
@@ -255,6 +222,8 @@ load_palette_2:
   BNE load_palette_2
 
   ; Call drawing routine with given parameters then reenable PPUMASK
+  LDA #$01
+  STA stages_n
   LDA #$00
   STA ppu_hibt
   STA ppu_lobt
@@ -308,7 +277,7 @@ vblankwait2:
   BPL vblankwait2
 
   ; Set defaults for all the variables
-  LDA #$10
+  LDA #$00
   STA player_x
   LDA #$BF
   STA player_y
@@ -316,7 +285,6 @@ vblankwait2:
   STA player_d
   STA player_s
   STA anim_cnt
-  STA oam_slot
   STA p1_holds
   STA p1_press
   STA ppu_tile
@@ -347,7 +315,7 @@ load_palette_1:
   CPX #$20
   BNE load_palette_1
 
-  ; Draw the two screens of the first level
+  ; Draw the first level
   LDA #$00
   STA stages_n
   STA ppu_hibt
@@ -376,7 +344,7 @@ forever:
 
 ; Draws four successive sprites from the player's sprite table
 ; Parameters include position (player_x, player_y), direction (player_d),
-; animation state (player_s), and OAM position (oam_slot)
+; and animation state (player_s)
 .proc draw_player
   ; Stack push
   PHP
@@ -393,29 +361,23 @@ forever:
   ADC player_s
   TAY
 load_sprites:
-  ; Add OAM offset to the counter
-  TXA
-  CLC 
-  ADC oam_slot
-  TAX
-
   ; Add player y-coord to the sprite y-coord
   LDA sprites, Y
   CLC
   ADC player_y
-  STA $0200, X
+  STA OAMPAGE, X
   INY
   INX
 
   ; Sprite ID
   LDA sprites, Y
-  STA $0200, X
+  STA OAMPAGE, X
   INY
   INX
 
   ; Sprite flags
   LDA sprites, Y
-  STA $0200, X
+  STA OAMPAGE, X
   INY
   INX
 
@@ -423,15 +385,9 @@ load_sprites:
   LDA sprites, Y
   CLC
   ADC player_x
-  STA $0200, X
+  STA OAMPAGE, X
   INY
   INX
-
-  ; Subtract OAM offset to properly make CPX
-  TXA
-  SEC 
-  SBC oam_slot
-  TAX
 
   ; Have we written four sprites? If not, continue loop
   CPX #$10
@@ -447,7 +403,10 @@ load_sprites:
   RTS
 .endproc
 
-; Handles both player movement and animations
+; Handles both player movement and animation
+; Parameters include position (player_x, player_y), direction (player_d),
+; animation state (player_s), buttons (p1_holds, p1_press) and a clock
+; (anim_cnt)
 .proc anim_player
   ; Stack push
   PHP
@@ -470,7 +429,7 @@ pause_check:
 
   ; Check each of the button inputs, starting with right
   ; Depending on button input, change player direction and xy coords
-  ; If player is on the centerline, it can change scroll coord instead
+  ; If player is on the centerline, it will change scroll coord instead
 right_check:
   LDA p1_holds
   AND #BTN_RIGHT
@@ -479,13 +438,13 @@ right_check:
   STA player_d
   LDA #$78
   CMP player_x
-  BEQ scroll_right
+  BEQ right_scroll
 right_move:
   LDA #$F0
   CMP player_x
   BEQ left_check
   INC player_x
-  JMP down_check
+  JMP end_check
 left_check:
   LDA p1_holds
   AND #BTN_LEFT
@@ -494,12 +453,13 @@ left_check:
   STA player_d
   LDA #$78
   CMP player_x
-  BEQ scroll_left
+  BEQ left_scroll
 left_move:
   LDA #$00
   CMP player_x
   BEQ down_check
   DEC player_x
+  JMP end_check
 down_check:
   LDA p1_holds
   AND #BTN_DOWN
@@ -522,17 +482,17 @@ up_check:
   BEQ end_check
   DEC player_y
   JMP end_check
-scroll_right:
+right_scroll:
   LDA #$01
   CMP screen_n
   BEQ right_move
   INC scroll_x
   LDA #$00
   CMP scroll_x
-  BNE down_check
+  BNE end_check
   INC screen_n
-  JMP down_check
-scroll_left:
+  JMP end_check
+left_scroll:
   LDA #$00
   ORA screen_n
   CMP scroll_x
@@ -540,9 +500,9 @@ scroll_left:
   DEC scroll_x
   LDA #$FF
   CMP scroll_x
-  BNE down_check
+  BNE end_check
   DEC screen_n
-  JMP down_check
+  JMP end_check
 end_check:
 
   ; Ignore animation procedure and reset counter if no direction is being held
@@ -589,7 +549,7 @@ end:
   RTS
 .endproc
 
-; Gets player 1's inputs
+; Gets player 1's inputs, whether it'd be a button press or hold
 .proc p1_read
   ; Stack push
   PHP
@@ -637,19 +597,22 @@ get_buttons:
   TYA
   PHA
 
+  ; Shift stage number accordingly to get correct offset
+  LSR stages_n
+  ROR stages_n
+
   ; Change offset of tile IDs depending on which stage we're writing to
   LDX #$00
   LDY #$00
   LDA #$04
   STA t_offset
   LDA stages_n
-  CMP #$78
-  BNE skip
+  CMP #$00
+  BEQ byte_loop
   ASL t_offset
-skip:
 
-byte_loop:
   ; Firstly, offset counter with stage offset
+byte_loop:
   TXA
   CLC
   ADC stages_n 
@@ -659,20 +622,18 @@ byte_loop:
   LDA stagetiles, X
   STA tilechnk
 
-chunk_loop:
   ; Clear accumulator and bitshift two bits of the tile chunk into it
+chunk_loop:
   LDA #$00
   ASL tilechnk
   ROL A
   ASL tilechnk
   ROL A
 
-  ; Add the tile ID offset before storing it in ppu_tile
+  ; Add the tile ID offset before storing it in ppu_tile and draw the metatile
   CLC
   ADC t_offset
   STA ppu_tile
-
-  ; With ppu_tile stored, initiate draw_metatile
   JSR draw_metatile
 
   ; With our metatile written, adjust ppu_lobt and Y-reg as necessary
@@ -700,6 +661,12 @@ chunk_loop:
   LDA ppu_hibt
   ADC #$00
   STA ppu_hibt
+
+  ; Finally, skip the next four bytes
+  INX
+  INX
+  INX
+  INX
 sum_skip:
 
   ; Increase the byte counter and subtract the stage offset
@@ -710,16 +677,16 @@ sum_skip:
   TAX
 
   ; Branch to end if we've gone through both screens
-  CPX #$78
+  CPX #$7C
   BEQ end
 
   ; Branch to the byte loop, unless we're done with the first screen
-  CPX #$3C
+  CPX #$78
   BNE byte_loop
 
-  ; If done with first screen, set PPU offsets to second screen and jump
-  LDA #$04
-  STA ppu_hibt
+  ; If done with first screen, set counter and PPU offsets to second screen and jump
+  LDX #$04
+  STX ppu_hibt
   LDA #$00
   STA ppu_lobt
   JMP byte_loop
@@ -727,6 +694,10 @@ end:
 
   ; After drawing both screens, end it off by drawing attributes
   JSR draw_attributes
+
+  ; Correct stage number
+  ASL stages_n
+  ROL stages_n
 
   ; Stack pull
   PLA
@@ -812,13 +783,13 @@ byte_loop:
   CLC
   ADC stages_n 
   TAX
-  LDA #$00
 
   ; Store the current byte into tilechnk
   LDY stagetiles, X
   STY tilechnk
 
   ; Do a series of rotates to extract the first attribute's lonibble
+  LDA #$00
   ROL tilechnk
   ROL tilechnk
   ROR A
@@ -832,6 +803,10 @@ byte_loop:
   ROR A
 
   ; Offset counter to the tilechnk below the current one
+  INX
+  INX
+  INX
+  INX
   INX
   INX
   INX
@@ -853,6 +828,10 @@ byte_loop:
   ROR A
 
   ; Return to the original tilechnk we were just on
+  DEX
+  DEX
+  DEX
+  DEX
   DEX
   DEX
   DEX
@@ -883,6 +862,10 @@ byte_loop:
   INX
   INX
   INX
+  INX
+  INX
+  INX
+  INX
 
   ; Repeat rotates again to extract the second attribute's hinibble
   LDY stagetiles, X
@@ -905,52 +888,44 @@ byte_loop:
   DEX
   DEX
   DEX
+  DEX
+  DEX
+  DEX
+  DEX
 
   ; Store second attribute to PPUDATA
   STA PPUDATA
 
-  ; Increase the counter and remove stage offset
+  ; Store the prior counter, increase the counter and remove stage offset
+  TXA
+  AND #%00000100
+  STA tilechnk
   INX
   TXA
   SEC
   SBC stages_n
   TAX
 
-  ; Offset counter to skip every other 4 bytes
-  ; Check is affected by which screen we're writing to
-  CPX #$3C
-  BCS screen_2_check
+  ; Check if this is the end of a screen row and add accordingly
   AND #%00000100
+  CMP tilechnk
   BEQ counter_checks
   TXA
   CLC
-  ADC #$04
-  TAX
-  JMP counter_checks
-screen_2_check:
-  AND #%00000100
-  BNE counter_checks
-  TXA
-  CLC
-  ADC #$04
+  ADC #$0C
   TAX
 
 counter_checks:
   ; If we have written to both screens, end subroutine
-  ; Important to note we avoid writing to the bottommost attribute
-  ; This is because screen data is 15 metatiles tall but attributes are 16
-  ; And the last row of metatiles are 00 anyway so no need to write there
-  CPX #$74
+  CPX #$84
   BEQ end
 
   ; Check the next byte of the loop unless we finished the first screen
-  CPX #$38
+  CPX #$80
   BNE byte_loop_jump
-
-  ; Correct the counter's offset to fit the second table
-  LDX #$3C
   
-  ; Set PPUADDR to the second screen before returning to loop
+  ; Set counter and PPUADDR to the second screen before returning to loop
+  LDX #$04
   LDA PPUSTATUS
   LDA #$27
   STA PPUADDR
