@@ -411,8 +411,8 @@ load_sprites:
 
 ; Handles both player movement and animation
 ; Parameters include position (player_x, player_y), direction (player_d),
-; animation state (player_s), buttons (p1_holds, p1_press) and a clock
-; (anim_cnt)
+; animation state (player_s), buttons (p1_holds, p1_press), a clock
+; (anim_cnt), and a collision flag (p1_cllsn)
 .proc anim_player
   ; Stack push
   PHP
@@ -573,6 +573,7 @@ end:
 .endproc
 
 ; Gets player 1's inputs, whether it'd be a button press or hold
+; Parameters include buttons (p1_press, p1_holds)
 .proc p1_read
   ; Stack push
   PHP
@@ -611,6 +612,9 @@ get_buttons:
   RTS
 .endproc
 
+; Renders both screens of the nametable, based on which stage the player is on
+; Parameters include stage (stages_n), tile manipulators (t_offset, tilechnk),
+; and PPU values (ppu_hibt, ppu_lobt, ppu_tile)
 .proc draw_screens
   ; Stack push
   PHP
@@ -732,6 +736,8 @@ end:
   RTS
 .endproc
 
+; Subroutine of draw_screens that draws a metatile on the given coord
+; Parameters include PPU values (ppu_hibt, ppu_lobt, ppu_tile)
 .proc draw_metatile
   ; Stack push
   PHP
@@ -783,6 +789,8 @@ end:
   RTS
 .endproc
 
+; Subroutine of draw_screens that converts screen data into an attribute table
+; Parameters include stage (stages_n) and tile manipulators (tilechnk)
 .proc draw_attributes
   ; Stack push
   PHP
@@ -968,6 +976,10 @@ end:
   RTS
 .endproc
 
+; Subroutine of draw_screens that converts screen data into an attribute table
+; Parameters include collision checkers (p1_cllsn, p1_xypos, p1_check),
+; scroll lines (scroll_x), player coords (player_x, player_y), PPU values
+; (ppu_tile) and tile manipulators (tilechnk, t_offset)
 .proc check_collision
   ; Stack push
   PHP
@@ -1142,9 +1154,9 @@ left_edge:
   INX
   LDA tilechnk
   AND #%00000011
-  ; Do a supercede check
+  ; Do a supersede check
   STA p1_check
-  JSR supercede_tile
+  JSR supersede_tile
   ; Check if the player can move left into that tile
 left_edge_end:
   LDA #BTN_LEFT
@@ -1179,9 +1191,9 @@ right_edge:
   ROL A
   ROL A
   AND #%00000011
-  ; Do a supercede check
+  ; Do a supersede check
   STA p1_check
-  JSR supercede_tile
+  JSR supersede_tile
   ; Check if the player can move right into that tile
 right_edge_end:
   LDA #BTN_RIGHT
@@ -1232,6 +1244,10 @@ end:
   RTS
 .endproc
 
+; Checks the given horizontal tiles
+; Parameters include X and Y registers, tile manipulators (tilechnk),
+; player coords (player_y), PPU values (ppu_tile) and collision checkers
+; (p1_check)
 .proc horizontal_check
   ; Stack push (X and Y are not pushed since we use them as parameters)
   PHP
@@ -1270,7 +1286,7 @@ hori_diagonal:
   ROL tilechnk
   ROL A
   STA p1_check
-  JSR supercede_tile
+  JSR supersede_tile
  end:
  
   ; Stack pull
@@ -1279,6 +1295,10 @@ hori_diagonal:
   RTS
 .endproc
 
+; Checks the given vertical tiles
+; Parameters include X and Y registers, tile manipulators (tilechnk, t_offset),
+; player coords (player_x), PPU values (ppu_tile) and collision checkers
+; (p1_check)
 .proc vertical_check
   ; Stack push (X is not pushed since we use it as a parameter)
   PHP
@@ -1331,7 +1351,7 @@ vert_diagonal:
   ROL tilechnk
   ROL A
   STA p1_check
-  JSR supercede_tile
+  JSR supersede_tile
 vert_end:
    
   ; Stack pull
@@ -1342,6 +1362,8 @@ vert_end:
   RTS
 .endproc
 
+; Loads a tilechnk one row down
+; Parameters include X register and tile manipulators (tilechnk)
 .proc lower_tilechnk
   ; Stack push (X is not pushed since we use it as a parameter)
   PHP
@@ -1365,7 +1387,9 @@ vert_end:
   RTS
 .endproc
 
-.proc supercede_tile
+; Supersedes the PPU tile data if it has tangible collision
+; Parameters include PPU values (ppu_tile) and collision checks (p1_check)
+.proc supersede_tile
   ; Stack push
   PHP
   PHA
@@ -1385,6 +1409,8 @@ end:
   RTS
 .endproc
 
+; Checks the given direction against the tile and states if its tangible or not
+; Parameters include PPU values (ppu_tile) and collision checks (p1_cllsn, p1_check)
 .proc check_direction
   ; Stack push
   PHP

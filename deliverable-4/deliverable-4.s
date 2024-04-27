@@ -550,6 +550,7 @@ end:
 .endproc
 
 ; Gets player 1's inputs, whether it'd be a button press or hold
+; Parameters include buttons (p1_press, p1_holds)
 .proc p1_read
   ; Stack push
   PHP
@@ -588,6 +589,9 @@ get_buttons:
   RTS
 .endproc
 
+; Renders both screens of the nametable, based on which stage the player is on
+; Parameters include stage (stages_n), tile manipulators (t_offset, tilechnk),
+; and PPU values (ppu_hibt, ppu_lobt, ppu_tile)
 .proc draw_screens
   ; Stack push
   PHP
@@ -709,6 +713,8 @@ end:
   RTS
 .endproc
 
+; Subroutine of draw_screens that draws a metatile on the given coord
+; Parameters include PPU values (ppu_hibt, ppu_lobt, ppu_tile)
 .proc draw_metatile
   ; Stack push
   PHP
@@ -760,6 +766,8 @@ end:
   RTS
 .endproc
 
+; Subroutine of draw_screens that converts screen data into an attribute table
+; Parameters include stage (stages_n) and tile manipulators (tilechnk)
 .proc draw_attributes
   ; Stack push
   PHP
